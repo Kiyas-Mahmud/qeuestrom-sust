@@ -41,23 +41,31 @@ _PHISH = ["scam", "phishing", "fraud call", "suspicious call", "fake", "prtarona
           "claim your", "suspicious link", "click this link", "click the link",
           "প্রতারণা", "প্রতারক", "সন্দেহজনক", "ফিশিং", "প্রতারিত", "লটারি", "পুরস্কার", "জিতেছেন"]
 _DUP = ["twice", "two times", "2 times", "double", "duplicate", "double charge",
+        "charged again", "charged twice", "debited twice", "deducted twice", "duibar",
         "দুইবার", "দুবার", "দুই বার", "ডাবল"]
-_FAILED = ["failed", "unsuccessful", "ব্যর্থ", "ফেইল", "ফেল"]
+_FAILED = ["failed", "unsuccessful", "didn't go through", "did not go through",
+           "didnt go through", "did not complete", "didn't complete", "could not complete",
+           "transaction failed", "payment failed", "ব্যর্থ", "ফেইল", "ফেল"]
 _DEDUCT = ["deducted", "deduct", "cut from", "কাটা", "কেটে"]
 _BALANCE = ["balance", "ব্যালেন্স", "ব্যালান্স"]
 _CASHIN = ["cash in", "cash-in", "cashin", "cash deposit", "ক্যাশ ইন", "ক্যাশইন"]
 _AGENT = ["agent", "এজেন্ট"]
 _DEPOSIT = ["deposit", "cash", "জমা", "ক্যাশ", "টাকা দিয়েছি"]
 _SETTLE = ["settlement", "settle", "settled", "সেটেলমেন্ট", "নিষ্পত্তি"]
-_WRONG = ["wrong number", "wrong person", "wrong recipient", "wrong account",
-          "by mistake", "mistakenly", "mistake", "typed it wrong",
-          "ভুল নম্বর", "ভুল মানুষ", "ভুল করে", "ভুল নাম্বার"]
+_WRONG = ["wrong number", "wrong person", "wrong recipient", "wrong account", "wrong agent",
+          "wrong merchant", "by mistake", "mistakenly", "mistake", "accidentally",
+          "typed it wrong", "sent to wrong", "ভুল নম্বর", "ভুল মানুষ", "ভুল করে",
+          "ভুল নাম্বার", "ভুল এজেন্ট"]
 _NOTRECV = ["didn't get", "didnt get", "did not get", "didn't receive",
             "did not receive", "not received", "hasn't received",
             "haven't received", "never received", "পায়নি", "পাইনি"]
 _SENT = ["sent", "transfer", "send", "পাঠিয়েছি", "পাঠালাম", "পাঠিয়েছিলাম"]
 _REFUND = ["refund", "money back", "return my", "want my money", "changed my mind",
            "ফেরত", "রিফান্ড", "ফেরত চাই"]
+# A contested refund (service failure) routes to disputes, not plain customer support.
+_CONTESTED = _NOTRECV + ["defective", "not working", "didn't work", "did not work",
+                         "not delivered", "never got", "damaged", "faulty", "broken",
+                         "wrong item", "cheated", "scammed"]
 
 
 def _has(text: str, terms: List[str]) -> bool:
@@ -71,12 +79,12 @@ def detect_case_type(signals: Signals) -> CaseType:
         return CaseType.phishing_or_social_engineering
     if _has(t, _DUP):
         return CaseType.duplicate_payment
-    if _has(t, _FAILED) or (_has(t, _DEDUCT) and _has(t, _BALANCE)):
-        return CaseType.payment_failed
     if _has(t, _CASHIN) or (_has(t, _AGENT) and _has(t, _DEPOSIT)):
         return CaseType.agent_cash_in_issue
     if _has(t, _SETTLE):
         return CaseType.merchant_settlement_delay
+    if _has(t, _FAILED) or (_has(t, _DEDUCT) and _has(t, _BALANCE)):
+        return CaseType.payment_failed
     if _has(t, _WRONG) or (_has(t, _SENT) and _has(t, _NOTRECV)):
         return CaseType.wrong_transfer
     if _has(t, _REFUND):
@@ -131,6 +139,13 @@ def evaluate(
     else:
         verdict = EvidenceVerdict.consistent
 
+    # A refund is "contested" (a service failure, not a change of mind) when the
+    # transaction failed/stalled or the complaint describes a delivery/quality problem.
+    contested_refund = case_type == CaseType.refund_request and (
+        (matched is not None and matched.status in ("failed", "pending", "reversed"))
+        or _has(signals.normalized, _CONTESTED)
+    )
+
     # Amount in scope (for severity / escalation)
     amount = matched.amount if matched and matched.amount else (max(signals.amounts) if signals.amounts else 0)
     high_amount = amount >= HIGH_AMOUNT
@@ -144,12 +159,14 @@ def evaluate(
         severity = Severity.high if verdict == EvidenceVerdict.consistent else Severity.medium
     elif case_type == CaseType.merchant_settlement_delay:
         severity = Severity.medium
+    elif contested_refund:
+        severity = Severity.medium
     else:
         severity = Severity.low
     if high_amount and severity in (Severity.low, Severity.medium):
         severity = Severity.high
 
-    department = _DEPARTMENT[case_type]
+    department = Department.dispute_resolution if contested_refund else _DEPARTMENT[case_type]
 
     # Escalation to a human reviewer
     human_review_required = (
@@ -159,6 +176,7 @@ def evaluate(
             CaseType.agent_cash_in_issue,
         )
         or (case_type == CaseType.wrong_transfer and matched is not None)
+        or contested_refund
         or verdict == EvidenceVerdict.inconsistent
         or severity == Severity.critical
         or high_amount
