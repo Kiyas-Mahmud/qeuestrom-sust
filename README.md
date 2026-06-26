@@ -8,6 +8,11 @@ routes the case, and drafts a **safe** customer reply.
 It is a support copilot, **not** a financial authority: it never asks for PIN/OTP/password
 and never promises a refund, reversal, or unblock it cannot authorize.
 
+## Live service
+- Base URL: **https://queuestorm-investigator-91iq.onrender.com**
+- Health: https://queuestorm-investigator-91iq.onrender.com/health
+- Analyze: `POST https://queuestorm-investigator-91iq.onrender.com/analyze-ticket`
+
 ## Endpoints
 | Method | Path | Purpose |
 |---|---|---|
