@@ -34,9 +34,12 @@ EXPECTED_STATUS = {
 # Keyword sets (English / Bangla / Banglish).
 _CRED = ["otp", "pin", "password", "card number", "cvv", "ওটিপি", "পিন", "পাসওয়ার্ড"]
 _ASK = ["asked", "asking", "ask for", "share", "wants", "want my", "wanted", "give me",
-        "told me", "send me your", "provide", "request my", "চাইছে", "চেয়েছে", "চায়", "শেয়ার"]
-_PHISH = ["scam", "phishing", "fraud call", "suspicious call", "fake",
-          "প্রতারণা", "প্রতারক", "সন্দেহজনক", "ফিশিং", "প্রতারিত"]
+        "told me", "send me your", "provide", "request my", "চাইছে", "চেয়েছে", "চায়", "শেয়ার",
+        "chaiche", "chacche", "cheyeche", "chailo", "chai", "magche", "share korte"]
+_PHISH = ["scam", "phishing", "fraud call", "suspicious call", "fake", "prtarona",
+          "protarok", "fishing", "lottery", "you won", "winner", "cash prize", "prize money",
+          "claim your", "suspicious link", "click this link", "click the link",
+          "প্রতারণা", "প্রতারক", "সন্দেহজনক", "ফিশিং", "প্রতারিত", "লটারি", "পুরস্কার", "জিতেছেন"]
 _DUP = ["twice", "two times", "2 times", "double", "duplicate", "double charge",
         "দুইবার", "দুবার", "দুই বার", "ডাবল"]
 _FAILED = ["failed", "unsuccessful", "ব্যর্থ", "ফেইল", "ফেল"]
