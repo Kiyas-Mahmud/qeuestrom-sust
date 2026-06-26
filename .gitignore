@@ -1,0 +1,12 @@
+# planning docs stay local; only README.md is tracked
+*.md
+!README.md
+
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+*.egg-info/
